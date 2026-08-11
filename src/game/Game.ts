@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { Car } from './car'
 import { ChaseCamera } from './camera'
+import { Celebration } from './celebration'
 import { COLLISION_RADIUS, createCity, GOAL_RADIUS, type CityData } from './city'
 import { Input } from './input'
 import { drawMinimap, type MinimapProps } from './minimap'
@@ -15,6 +16,7 @@ export class Game {
   private readonly scene: THREE.Scene
   private readonly camera: THREE.PerspectiveCamera
   private readonly chase: ChaseCamera
+  private readonly celebration: Celebration
   private readonly input = new Input()
   private readonly car: Car
   private readonly carMesh = new THREE.Group()
@@ -81,6 +83,8 @@ export class Game {
     this.chase = new ChaseCamera(this.camera, this.car)
     this.chase.update(1, this.car)
 
+    this.celebration = new Celebration(this.scene, this.camera)
+
     this.minimap = this.buildMinimapProps()
 
     this.input.attach()
@@ -93,6 +97,7 @@ export class Game {
     cancelAnimationFrame(this.raf.id)
     window.removeEventListener('resize', this.onResize)
     this.input.detach()
+    this.celebration.dispose()
     this.renderer.dispose()
     if (this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement)
@@ -131,6 +136,8 @@ export class Game {
       this.updateMarkers(dt)
       this.checkWin()
     }
+
+    this.celebration.update(dt)
 
     this.drawMinimap()
     this.renderer.render(this.scene, this.camera)
@@ -192,6 +199,7 @@ export class Game {
       this.milestonesReached++
       this.city.milestoneMarkers[next].visible = false
       this.targetActiveElapsed = 0
+      this.celebration.burst(m.x, m.z)
       this.onTarget(this.currentTargetLabel())
       return
     }
