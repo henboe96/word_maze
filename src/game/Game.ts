@@ -111,14 +111,15 @@ export class Game {
     sun.position.set(40, 60, 30)
     // Cast soft shadows across the whole city so objects land on the ground.
     sun.castShadow = true
-    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.mapSize.set(6144, 6144)
     sun.shadow.camera.near = 1
     sun.shadow.camera.far = 220
     sun.shadow.camera.left = -95
     sun.shadow.camera.right = 95
     sun.shadow.camera.top = 95
     sun.shadow.camera.bottom = -95
-    sun.shadow.bias = -0.0005
+    sun.shadow.bias = -0.0001
+    sun.shadow.normalBias = 0.01
     this.scene.add(sun)
   }
 
