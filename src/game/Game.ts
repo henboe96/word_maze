@@ -2,9 +2,11 @@ import * as THREE from 'three'
 import { Car } from './car'
 import { ChaseCamera } from './camera'
 import { Celebration } from './celebration'
+import { buildCarMesh } from './carMesh'
 import { COLLISION_RADIUS, createCity, GOAL_RADIUS, type CityData } from './city'
 import { Input } from './input'
 import { drawMinimap, type MinimapProps } from './minimap'
+import { TireSmoke } from './smoke'
 
 const GRASS_MAX_SPEED = 12
 const GRASS_DRAG = 3
@@ -17,6 +19,7 @@ export class Game {
   private readonly camera: THREE.PerspectiveCamera
   private readonly chase: ChaseCamera
   private readonly celebration: Celebration
+  private readonly tireSmoke: TireSmoke
   private readonly input = new Input()
   private readonly car: Car
   private readonly carMesh = new THREE.Group()
@@ -84,6 +87,7 @@ export class Game {
     this.chase.update(1, this.car)
 
     this.celebration = new Celebration(this.scene, this.camera)
+    this.tireSmoke = new TireSmoke(this.scene)
 
     this.minimap = this.buildMinimapProps()
 
@@ -98,6 +102,7 @@ export class Game {
     window.removeEventListener('resize', this.onResize)
     this.input.detach()
     this.celebration.dispose()
+    this.tireSmoke.dispose()
     this.renderer.dispose()
     if (this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement)
@@ -139,6 +144,8 @@ export class Game {
     }
 
     this.celebration.update(dt)
+    // Keep updating even after winning so live puffs finish fading out.
+    this.tireSmoke.update(dt)
 
     this.drawMinimap()
     this.renderer.render(this.scene, this.camera)
@@ -161,6 +168,14 @@ export class Game {
       if (this.car.speed < -GRASS_MAX_SPEED) this.car.speed = -GRASS_MAX_SPEED
     }
     this.syncCarMesh()
+
+    // Wheelspin smoke: full throttle at low speed makes the thickest plume.
+    const speedAbs = Math.abs(this.car.speed)
+    const spinning = throttle && !reverse ? Math.max(0, 1 - speedAbs / 8) : 0
+    // Cornering scrub: rear tires smoke when steering hard while moving fast.
+    const cornering = 0.75 * Math.abs(steer) * Math.min(speedAbs / 12, 1)
+    const intensity = Math.max(spinning, cornering)
+    this.tireSmoke.emitFrom(this.carMesh, dt, intensity)
   }
 
   private syncCarMesh(): void {
@@ -320,44 +335,4 @@ export class Game {
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(el.clientWidth, el.clientHeight)
   }
-}
-
-/** Build a simple boxy car: body + cabin + four wheels. */
-function buildCarMesh(): THREE.Group {
-  const group = new THREE.Group()
-
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 0.8, 4),
-    new THREE.MeshLambertMaterial({ color: 0xd33c3c }),
-  )
-  body.position.y = 0.7
-  body.castShadow = true
-  body.receiveShadow = true
-  group.add(body)
-
-  const cabin = new THREE.Mesh(
-    new THREE.BoxGeometry(1.6, 0.7, 2),
-    new THREE.MeshLambertMaterial({ color: 0x22252c }),
-  )
-  cabin.position.set(0, 1.3, -0.3)
-  cabin.castShadow = true
-  group.add(cabin)
-
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 })
-  const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 12)
-  const wheelPositions: Array<[number, number, number]> = [
-    [1, 0.4, 1.4],
-    [-1, 0.4, 1.4],
-    [1, 0.4, -1.4],
-    [-1, 0.4, -1.4],
-  ]
-  for (const [x, y, z] of wheelPositions) {
-    const wheel = new THREE.Mesh(wheelGeo, wheelMat)
-    wheel.rotation.x = Math.PI / 2
-    wheel.position.set(x, y, z)
-    wheel.castShadow = true
-    group.add(wheel)
-  }
-
-  return group
 }

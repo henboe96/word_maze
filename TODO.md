@@ -25,7 +25,7 @@
 - [x] Add simple collision with buildings/road edges
 - [x] Add restart button or key
 - [x] Add some trees, grass, and other scenery
-- [ ] Add a slightly nicer car
+- [x] Add a slightly nicer car
 - [ ] Improve car movement feel
 - [ ] Improve camera smoothing
 
